@@ -403,6 +403,9 @@ body.role-viewer .adm-only{display:none!important}
       </div>
       <button type="submit" class="btn pri" style="width:100%;padding:10px">Unlock Dashboard</button>
       <div class="auth-err" id="lgErr"></div>
+      <div style="text-align:center;margin-top:12px">
+      <button type="button" class="btn xs ghost" onclick="ugForgotPass()">Forgot Admin Password? Reset via Passkey</button>
+      </div>
     </form>
   </div>
 </div>
@@ -1341,6 +1344,17 @@ injectAdminUI();
 applyBranding();
 if(CUR_USER){$('#authGate').hidden=true;resetIdle();applyRBAC();}
 else{$('#authGate').hidden=false;}
+function ugForgotPass(){
+  const pk=prompt('Enter Admin Passkey to reset password (Default: 9999):');
+  if(pk===null)return;
+  if(pk!==SEC.passkey){alert('Wrong Passkey!');return}
+  const np=prompt('Passkey verified! Enter NEW password for '+SEC.users[0].u+':');
+  if(!np||!np.trim())return;
+  SEC.users[0].p=np.trim();
+  svSec();
+  addLog('Password Reset','Via Passkey on Login Screen');
+  alert('Password updated! Now login with username: '+SEC.users[0].u);
+}  
 </script>
 </body>
 </html>
