@@ -1011,7 +1011,7 @@ async function delM(i){if(await ask('Remove '+S.master[i].v+' from Vendor Master
 
 render();
 
-/* === UGAOO ADMIN PANEL, SECURITY & BRANDING MODULE === */
+/* === UGAOO ADMIN PANEL, SECURITY & BRANDING MODULE (V2) === */
 const UG_LEAF_SVG='<svg class="ic ic-lg" viewBox="0 0 24 24"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg>';
 const UG_DEF={
   users:[
@@ -1019,6 +1019,7 @@ const UG_DEF={
     {u:'staff',p:'view123',role:'viewer',name:'Accounts Staff'}
   ],
   perms:{staffUpload:false,staffEdit:false,staffDelete:false,staffBackup:false},
+  passkey:'9999',
   timeoutMin:30,
   logo:'',
   banner:'',
@@ -1029,12 +1030,13 @@ const UG_DEF={
 
 let SEC=Object.assign({},UG_DEF,LS.g('sec',{}));
 SEC.perms=Object.assign({},UG_DEF.perms,SEC.perms||{});
+if(!SEC.passkey)SEC.passkey='9999';
 if(!Array.isArray(SEC.users)||!SEC.users.length)SEC.users=UG_DEF.users;
 if(!Array.isArray(SEC.logs))SEC.logs=[];
 const svSec=()=>LS.s('sec',SEC);
 
 let CUR_USER=JSON.parse(sessionStorage.getItem('vpp2_session')||'null');
-let IDLE_T=null;
+let IDLE_T=null,PASS_UNLOCKED=false,EDIT_UIDX=-1;
 
 function addLog(action,detail=''){
   const who=CUR_USER?CUR_USER.u:'system';
@@ -1060,19 +1062,16 @@ function applyBranding(){
 }
 
 function injectAdminUI(){
-  // 1. Add Admin Panel tab in nav
   if(!$('nav button[data-t="admin"]')){
     const nb=document.createElement('button');
     nb.dataset.t='admin';nb.className='adm-only';nb.onclick=()=>go('admin');
     nb.innerHTML='<svg class="ic" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Admin Panel';
     $('nav').appendChild(nb);
   }
-  // 2. Add Admin section in main
   if(!$('#t-admin')){
     const sec=document.createElement('section');sec.id='t-admin';sec.hidden=true;
     $('main').appendChild(sec);
   }
-  // 3. Add Ugaoo Botanical Hero Banner at top of main
   if(!$('#ugHero')){
     const h=document.createElement('div');h.id='ugHero';h.className='ug-hero';
     h.innerHTML=`
@@ -1089,9 +1088,7 @@ function injectAdminUI(){
       </div>`;
     $('main').prepend(h);
   }
-  // Mark sensitive header buttons for RBAC
-  const hdrBtns=$$('header .row > *');
-  hdrBtns.forEach(el=>{
+  $$('header .row > *').forEach(el=>{
     const txt=el.textContent||'';
     if(/Backup|Restore/i.test(txt))el.dataset.perm='staffBackup';
     if(/Upload Outstanding/i.test(txt))el.dataset.perm='staffUpload';
@@ -1128,6 +1125,7 @@ function ugLogin(e){
   if(!found){$('#lgErr').textContent='Invalid username or password';return}
   CUR_USER={u:found.u,role:found.role,name:found.name};
   sessionStorage.setItem('vpp2_session',JSON.stringify(CUR_USER));
+  PASS_UNLOCKED=false;EDIT_UIDX=-1;
   $('#authGate').hidden=true;
   $('#lgPass').value='';$('#lgErr').textContent='';
   addLog('Login',`${found.name} (${found.role})`);
@@ -1138,7 +1136,7 @@ function ugLogin(e){
 
 function ugLogout(msg){
   if(CUR_USER)addLog('Logout',CUR_USER.u);
-  CUR_USER=null;
+  CUR_USER=null;PASS_UNLOCKED=false;EDIT_UIDX=-1;
   sessionStorage.removeItem('vpp2_session');
   if(T==='admin')go('dash');
   $('#authGate').hidden=false;
@@ -1146,7 +1144,6 @@ function ugLogout(msg){
   setTimeout(()=>$('#lgUser').focus(),50);
 }
 
-// Hook into existing render() so Admin tab & RBAC work seamlessly
 const _origRender=render;
 render=function(){
   if(T==='admin'){
@@ -1156,6 +1153,7 @@ render=function(){
     updateBadges();
     rAdmin();
   }else{
+    PASS_UNLOCKED=false; // Auto-hide passwords when leaving Admin tab
     _origRender();
   }
   applyRBAC();
@@ -1163,6 +1161,7 @@ render=function(){
 
 function rAdmin(){
   const el=$('#t-admin');
+  const edU=EDIT_UIDX>=0?SEC.users[EDIT_UIDX]:null;
   el.innerHTML=`
   <div class="kpis">
     ${k('Active Users',SEC.users.length,'Admin & Staff accounts','pri',IC.user)}
@@ -1172,7 +1171,7 @@ function rAdmin(){
   </div>
   <div class="adm-grid">
     <div class="card">
-      <h3>🌿 Ugaoo Branding & Photo Theme</h3>
+      <h3>🌿 Ugaoo Branding & HD Photo Theme</h3>
       <div class="fld" style="margin-bottom:10px"><span>Dashboard Heading</span><input id="ugT" value="${esc(SEC.title)}"></div>
       <div class="fld" style="margin-bottom:12px"><span>Subtitle</span><input id="ugS" value="${esc(SEC.sub)}"></div>
       <div class="row">
@@ -1180,6 +1179,7 @@ function rAdmin(){
         <label class="btn sm">Upload Banner Photo<input type="file" accept="image/*" hidden onchange="ugImg(event,'banner')"></label>
         <button class="btn sm ghost" onclick="SEC.logo='';SEC.banner='';svSec();applyBranding();toast('Reset to default leaf theme')">Reset</button>
       </div>
+      <p class="note" style="margin-bottom:10px">Any high-res image size supported (auto-optimized to HD).</p>
       <button class="btn sm pri" onclick="SEC.title=$('#ugT').value.trim()||'Ugaoo Agritech';SEC.sub=$('#ugS').value.trim();svSec();applyBranding();addLog('Branding Updated');toast('Branding saved')">Save Branding</button>
     </div>
 
@@ -1189,25 +1189,43 @@ function rAdmin(){
       <div class="adm-switch"><div><span>Allow Staff to Edit / Mark Paid</span><small>Invoice edits & manual payment status</small></div><input type="checkbox" ${SEC.perms.staffEdit?'checked':''} onchange="SEC.perms.staffEdit=this.checked;svSec();addLog('Permission Changed','staffEdit='+this.checked)"></div>
       <div class="adm-switch"><div><span>Allow Staff to Delete Records</span><small>Delete invoices or clear data</small></div><input type="checkbox" ${SEC.perms.staffDelete?'checked':''} onchange="SEC.perms.staffDelete=this.checked;svSec();addLog('Permission Changed','staffDelete='+this.checked)"></div>
       <div class="adm-switch"><div><span>Allow Staff Backup / Restore</span><small>Export or import JSON backups</small></div><input type="checkbox" ${SEC.perms.staffBackup?'checked':''} onchange="SEC.perms.staffBackup=this.checked;svSec();addLog('Permission Changed','staffBackup='+this.checked)"></div>
-      <div class="row" style="margin-top:10px;margin-bottom:0">
-        <label class="fld" style="flex:1"><span>Auto-Lock Timeout (Minutes, 0 = Off)</span><input type="number" min="0" max="240" value="${SEC.timeoutMin}" onchange="SEC.timeoutMin=+this.value||0;svSec();resetIdle();toast('Timeout updated')"></label>
+      <div class="bar" style="margin:10px 0 0;grid-template-columns:1fr 1fr">
+        <label class="fld"><span>Auto-Lock (Min, 0=Off)</span><input type="number" min="0" max="240" value="${SEC.timeoutMin}" onchange="SEC.timeoutMin=+this.value||0;svSec();resetIdle();toast('Timeout updated')"></label>
+        <div class="fld"><span>Password View Passkey</span><button class="btn sm" style="height:39px" onclick="ugChangePasskey()">🔑 Change Passkey</button></div>
       </div>
     </div>
   </div>
 
   <div class="card" style="margin-top:16px">
-    <h3>👥 Manage Users & Passwords</h3>
+    <div class="row-between">
+      <h3>👥 ${edU?'Edit User: '+esc(edU.u):'Manage Users & Passwords'}</h3>
+      <button class="btn sm ${PASS_UNLOCKED?'bad':'pri'}" onclick="ugTogglePassView()">
+        ${PASS_UNLOCKED?'🔒 Hide Passwords':'🔑 Unlock Passwords (Passkey)'}
+      </button>
+    </div>
     <div class="bar" style="margin-bottom:12px">
-      <div class="fld"><span>Username</span><input id="nu" placeholder="e.g. accounts1"></div>
-      <div class="fld"><span>Display Name</span><input id="nn" placeholder="e.g. Rahul"></div>
-      <div class="fld"><span>Password / PIN</span><input id="np" type="password" placeholder="Set password"></div>
-      <div class="fld"><span>Role</span><select id="nr"><option value="viewer">Staff (Viewer)</option><option value="admin">Admin (Full Access)</option></select></div>
-      <button class="btn pri" onclick="ugAddUser()" style="height:39px">${IC.plus} Save User</button>
+      <div class="fld"><span>Username</span><input id="nu" value="${edU?esc(edU.u):''}" placeholder="e.g. accounts1"></div>
+      <div class="fld"><span>Display Name</span><input id="nn" value="${edU?esc(edU.name):''}" placeholder="e.g. Rahul"></div>
+      <div class="fld"><span>${edU?'New Password (blank = keep)':'Password / PIN'}</span><input id="np" type="password" placeholder="${edU?'Leave blank to keep same':'Set password'}"></div>
+      <div class="fld"><span>Role</span><select id="nr" ${EDIT_UIDX===0?'disabled':''}><option value="viewer" ${edU&&edU.role==='viewer'?'selected':''}>Staff (Viewer)</option><option value="admin" ${edU&&edU.role==='admin'?'selected':''}>Admin (Full Access)</option></select></div>
+      <div class="row" style="margin:0;height:39px">
+        <button class="btn pri" onclick="ugSaveUser()" style="height:39px;flex:1">${edU?IC.check+' Update':IC.plus+' Add User'}</button>
+        ${edU?`<button class="btn" onclick="EDIT_UIDX=-1;rAdmin()" style="height:39px">Cancel</button>`:''}
+      </div>
     </div>
     <div class="tw">
       <table>
-        <thead><tr><th>Username</th><th>Name</th><th>Role</th><th>Action</th></tr></thead>
-        <tbody>${SEC.users.map((u,i)=>`<tr><td><b>${esc(u.u)}</b></td><td>${esc(u.name)}</td><td><span class="pill ${u.role==='admin'?'ok':'site'}">${u.role.toUpperCase()}</span></td><td>${u.u==='admin'?'<span class="note">Primary Admin</span>':`<button class="btn xs bad" onclick="ugDelUser(${i})">${IC.trash} Remove</button>`}</td></tr>`).join('')}</tbody>
+        <thead><tr><th>Username</th><th>Name</th><th>Role</th><th>Password</th><th>Action</th></tr></thead>
+        <tbody>${SEC.users.map((u,i)=>`<tr>
+          <td><b>${esc(u.u)}</b>${i===0?' <span class="pill ok">Primary</span>':''}</td>
+          <td>${esc(u.name)}</td>
+          <td><span class="pill ${u.role==='admin'?'ok':'site'}">${u.role.toUpperCase()}</span></td>
+          <td style="font-family:monospace;font-size:13px">${PASS_UNLOCKED?`<span class="pill amb">${esc(u.p)}</span>`:'<span style="color:var(--mut)">••••••••</span>'}</td>
+          <td><div class="act">
+            <button class="btn xs" onclick="ugEditUser(${i})">${IC.edit} Edit</button>
+            ${i===0?'':`<button class="btn xs bad" onclick="ugDelUser(${i})">${IC.trash} Remove</button>`}
+          </div></td>
+        </tr>`).join('')}</tbody>
       </table>
     </div>
   </div>
@@ -1223,36 +1241,106 @@ function rAdmin(){
   </div>`;
 }
 
+// Smart HD Auto-Compression (No 1.5MB limit!)
 function ugImg(e,key){
   const f=e.target.files[0];e.target.value='';if(!f)return;
-  if(f.size>1.5*1024*1024){toast('Image too large (keep under 1.5 MB)');return}
+  toast('Optimizing HD image...');
   const r=new FileReader();
-  r.onload=()=>{SEC[key]=r.result;svSec();applyBranding();addLog('Updated '+key);toast('Ugaoo '+key+' updated!')};
+  r.onload=ev=>{
+    const img=new Image();
+    img.onload=()=>{
+      const maxDim=key==='logo'?512:1600;
+      let w=img.width,h=img.height;
+      if(w>maxDim||h>maxDim){
+        if(w>=h){h=Math.round(h*(maxDim/w));w=maxDim}
+        else{w=Math.round(w*(maxDim/h));h=maxDim}
+      }
+      const cv=document.createElement('canvas');
+      cv.width=w;cv.height=h;
+      cv.getContext('2d').drawImage(img,0,0,w,h);
+      const mime=key==='logo'?'image/webp':'image/jpeg';
+      const dataUrl=cv.toDataURL(mime,0.85);
+      SEC[key]=dataUrl;
+      if(svSec()){applyBranding();addLog('Updated '+key,`${w}x${h}px`);toast('Ugaoo '+key+' saved in HD!')}
+    };
+    img.onerror=()=>toast('Could not process this image');
+    img.src=ev.target.result;
+  };
   r.readAsDataURL(f);
 }
 
-function ugAddUser(){
+// Passkey Gate for Viewing Passwords
+function ugTogglePassView(){
+  if(PASS_UNLOCKED){PASS_UNLOCKED=false;rAdmin();toast('Passwords hidden');return}
+  modal(`<h3>🔑 Enter Admin Passkey</h3>
+    <p class="note" style="margin-bottom:12px">Enter your Passkey to reveal user passwords (Default: 9999).</p>
+    <div class="fld" style="margin-bottom:14px"><input id="pkIn" type="password" placeholder="Enter passkey"></div>
+    <div class="row" style="justify-content:flex-end;margin:0">
+      <button class="btn" onclick="$('#dlg').close()">Cancel</button>
+      <button class="btn pri" onclick="ugVerifyPK()">Unlock</button>
+    </div>`);
+  setTimeout(()=>$('#pkIn').focus(),50);
+  $('#pkIn').onkeydown=e=>{if(e.key==='Enter')ugVerifyPK()};
+}
+function ugVerifyPK(){
+  if($('#pkIn').value===SEC.passkey){
+    PASS_UNLOCKED=true;$('#dlg').close();addLog('Viewed Passwords','Passkey verified');rAdmin();toast('Passwords unlocked');
+  }else{toast('Wrong Passkey!')}
+}
+
+function ugChangePasskey(){
+  modal(`<h3>🔑 Change View Passkey</h3>
+    <div class="fld" style="margin:12px 0"><label>Current Passkey<input id="pkOld" type="password" placeholder="Current passkey"></label></div>
+    <div class="fld" style="margin-bottom:16px"><label>New Passkey<input id="pkNew" type="password" placeholder="Set new passkey"></label></div>
+    <div class="row" style="justify-content:flex-end;margin:0">
+      <button class="btn" onclick="$('#dlg').close()">Cancel</button>
+      <button class="btn pri" onclick="ugSavePK()">Save Passkey</button>
+    </div>`);
+}
+function ugSavePK(){
+  if($('#pkOld').value!==SEC.passkey){toast('Current passkey is incorrect');return}
+  const np=$('#pkNew').value.trim();
+  if(!np){toast('Enter a new passkey');return}
+  SEC.passkey=np;svSec();$('#dlg').close();addLog('Passkey Changed');toast('Passkey updated successfully');
+}
+
+function ugEditUser(i){EDIT_UIDX=i;rAdmin();$('#nu').focus();}
+
+function ugSaveUser(){
   const u=$('#nu').value.trim().toLowerCase(),n=$('#nn').value.trim()||u,p=$('#np').value,role=$('#nr').value;
-  if(!u||!p){toast('Enter username & password');return}
-  const ex=SEC.users.find(x=>x.u.toLowerCase()===u);
-  if(ex){ex.p=p;ex.name=n;if(ex.u!=='admin')ex.role=role;addLog('Updated User',u);}
-  else{SEC.users.push({u,p,role,name:n});addLog('Added User',u+' ('+role+')');}
-  svSec();toast('User saved');rAdmin();
+  if(!u){toast('Enter a username');return}
+  if(EDIT_UIDX>=0){
+    const target=SEC.users[EDIT_UIDX];
+    if(SEC.users.some((x,idx)=>idx!==EDIT_UIDX&&x.u.toLowerCase()===u)){toast('Username already exists');return}
+    const oldU=target.u;
+    target.u=u;target.name=n;
+    if(p)target.p=p;
+    if(EDIT_UIDX!==0)target.role=role;
+    if(CUR_USER&&CUR_USER.u===oldU){CUR_USER.u=u;CUR_USER.name=n;sessionStorage.setItem('vpp2_session',JSON.stringify(CUR_USER));}
+    addLog('Updated User',oldU+(oldU!==u?' -> '+u:''));
+    EDIT_UIDX=-1;
+  }else{
+    if(!p){toast('Enter a password for new user');return}
+    if(SEC.users.some(x=>x.u.toLowerCase()===u)){toast('Username already exists — click Edit to update');return}
+    SEC.users.push({u,p,role,name:n});
+    addLog('Added User',u+' ('+role+')');
+  }
+  svSec();applyRBAC();toast('User saved');rAdmin();
 }
 
 async function ugDelUser(i){
+  if(i===0){toast('Primary admin cannot be deleted');return}
   if(await ask('Remove user '+SEC.users[i].u+'?')){
     addLog('Deleted User',SEC.users[i].u);
-    SEC.users.splice(i,1);svSec();rAdmin();
+    SEC.users.splice(i,1);if(EDIT_UIDX===i)EDIT_UIDX=-1;
+    svSec();rAdmin();
   }
 }
 
-// Initialize Security & Ugaoo Theme on Load
 injectAdminUI();
 applyBranding();
 if(CUR_USER){$('#authGate').hidden=true;resetIdle();applyRBAC();}
 else{$('#authGate').hidden=false;}
-
 </script>
 </body>
 </html>
