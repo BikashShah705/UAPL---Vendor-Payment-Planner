@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Vendor Payment Planner</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{--bg:#edf1ee;--card:#fff;--ink:#14261f;--mut:#5b6b64;--line:#d5ddd7;--pri:#1f6f54;--pri2:#e1efe8;--bad:#b3261e;--c1:#1f6f54;--c2:#c8872b;--c3:#b3261e;--c4:#4a6fa5;--c5:#7a5c99;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1814;--card:#16241e;--ink:#e6efe9;--mut:#9ab0a5;--line:#2a3d34;--pri:#4fbf94;--pri2:#1c3329;--bad:#ff8a80;--c1:#4fbf94;--c2:#e0a64a;--c3:#ff8a80;--c4:#7fa6dd;--c5:#b497d1;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0e1814;--card:#16241e;--ink:#e6efe9;--mut:#9ab0a5;--line:#2a3d34;--pri:#4fbf94;--pri2:#1c3329;--bad:#ff8a80;--c1:#4fbf94;--c2:#e0a64a;--c3:#ff8a80;--c4:#7fa6dd;--c5:#b497d1;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center;padding:16px 16px 6px}
+h1{font-size:21px;margin:0;font-weight:700}h2{font-size:18px;margin:0 0 6px}h3{font-size:15px;margin:0 0 10px}
+#meta{margin:2px 0 0;color:var(--mut);font-size:13px}
+nav{display:flex;gap:6px;padding:8px 16px;overflow-x:auto}
+nav button{border:1px solid var(--line);background:var(--card);color:var(--ink);padding:8px 14px;border-radius:20px;font:inherit;white-space:nowrap;cursor:pointer}
+nav button.on{background:var(--pri);color:#fff;border-color:var(--pri)}
+main{padding:6px 16px 40px;max-width:1400px;margin:0 auto}
+.btn{display:inline-block;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:8px 14px;border-radius:8px;font:inherit;cursor:pointer}
+.btn.pri{background:var(--pri);color:#fff;border-color:var(--pri)}.btn.sm{padding:3px 8px;font-size:12.5px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+.kpi{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--c4);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column}
+.kpi.bad{border-left-color:var(--bad)}.kpi.amb{border-left-color:var(--c2)}.kpi.pri{border-left-color:var(--pri)}
+.kpi span,.kpi small{color:var(--mut);font-size:12.5px}.kpi b{font-size:21px;font-variant-numeric:tabular-nums}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}.grid .wide{grid-column:1/-1}.grid .card{margin:0}
+.cv{position:relative;height:260px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;align-items:end}
+.bar>label{display:flex;flex-direction:column;font-size:12.5px;color:var(--mut);gap:3px}
+select,input[type=text],input[type=search],input[type=number],input[type=date]{font:inherit;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);min-width:140px}
+.ms{position:relative}.ms summary{list-style:none;border:1px solid var(--line);background:var(--card);padding:7px 10px;border-radius:8px;cursor:pointer;min-width:140px;white-space:nowrap}.ms summary::-webkit-details-marker{display:none}
+.ms>span{display:block;font-size:12.5px;color:var(--mut);margin-bottom:3px}
+.pop{position:absolute;z-index:5;top:100%;left:0;margin-top:4px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px;width:270px;box-shadow:0 6px 20px rgba(0,0,0,.2)}
+.pop input{width:100%}.mb{display:flex;gap:6px;margin-top:6px}.lst{max-height:240px;overflow:auto;margin-top:6px}
+.pop label{display:flex;flex-direction:row;gap:6px;color:var(--ink);font-size:13.5px;padding:3px 0}
+.tw{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{color:var(--mut);font-weight:600;font-size:12px;position:sticky;top:0;background:var(--card)}
+.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}.act{white-space:nowrap}
+tr.k{cursor:pointer}tr.k:hover td{background:var(--pri2)}
+tr.grp td{background:var(--pri2);font-weight:600}tr.tot td{font-weight:700;border-top:2px solid var(--line)}
+.od{color:var(--bad);font-weight:600}.pill{padding:1px 8px;border-radius:10px;font-size:12px;background:var(--pri2);color:var(--pri);white-space:nowrap}
+.empty{background:var(--card);border:1px dashed var(--line);border-radius:10px;padding:30px 18px;text-align:center}
+.empty p,.note{color:var(--mut);margin:4px 0}.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+.chk{display:flex;gap:6px;align-items:center;font-size:13.5px}
+dialog{border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);width:min(680px,94vw);max-height:88vh;overflow:auto}dialog::backdrop{background:rgba(0,0,0,.45)}
+.fg{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px;margin-bottom:12px}.fg label{display:flex;flex-direction:column;font-size:12px;color:var(--mut);gap:3px}.fg input{min-width:0;width:100%}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:8px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90vw;z-index:99}#toast.on{opacity:1}
+</style></head><body>
+<header><div><h1>Vendor Payment Planner</h1><p id="meta"></p></div>
+<label class="btn pri">Upload Outstanding Sheet<input type="file" accept=".xlsx,.xls,.csv" hidden onchange="upOut(event)"></label></header>
+<nav><button data-t="dash" class="on" onclick="go('dash')">Dashboard</button><button data-t="plan" onclick="go('plan')">Payment plan</button><button data-t="paid" onclick="go('paid')">Payment complete</button><button data-t="mast" onclick="go('mast')">Vendor master</button></nav>
+<main><section id="t-dash"></section><section id="t-plan" hidden></section><section id="t-paid" hidden></section><section id="t-mast" hidden></section></main>
+<dialog id="dlg"><div id="dc"></div></dialog><div id="toast"></div>
+<script>
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const LS={g(k,d){try{const v=localStorage.getItem('vpp2_'+k);return v?JSON.parse(v):d}catch(e){return d}},s(k,v){try{localStorage.setItem('vpp2_'+k,JSON.stringify(v));return true}catch(e){toast('Could not save in this browser');return false}}};
+let S={inv:LS.g('inv',[]),paid:LS.g('paid',[]),master:LS.g('master',[]),asof:LS.g('asof','')};
+const sv=()=>{LS.s('inv',S.inv);LS.s('paid',S.paid)};
+let T='dash',CH=[],LQ='',MQ='';
+const F={site:new Set,type:new Set,cat:new Set,vendor:new Set,st:'due',q:'',multi:true};
+const COLS=[['Invoice Submission Date','d','submission'],['Outstanding Update \nOn Dated','d','update'],['Vendor Name','t','vendor name'],['Narration','t','narration'],['Invoice No.','t','invoice no'],['Pending Amount (Credit Balance)','n','pending amount'],['Invoice Dated','d','invoice dated'],['Credit Period','n','credit period'],['Due Date of Payment','d','due date'],['Invoice Outstanding for','n','outstanding for'],['Overdue by days','n','overdue'],['<30','n','<30'],['30-60','n','30-60'],['60-91','n','60-91'],['>91','n','>91'],['Remark','t','remark']];
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const nk=s=>String(s).toLowerCase().replace(/\s+/g,' ').trim(),hd=c=>c[0].replace(/\s*\n\s*/g,' ');
+const MON={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11},MN=Object.keys(MON).map(m=>m[0].toUpperCase()+m.slice(1));
+const iso=(y,m,d)=>new Date(Date.UTC(y,m,d)).toISOString().slice(0,10);
+const T0=(()=>{const t=new Date();return Date.UTC(t.getFullYear(),t.getMonth(),t.getDate())})(),TODAY=new Date(T0).toISOString().slice(0,10);
+const od=d=>{const t=Date.parse(d);return isNaN(t)?0:Math.floor((T0-t)/864e5)};
+const fd=d=>{if(!d)return '';if(!/^\d{4}-\d{2}-\d{2}$/.test(d))return String(d);const x=new Date(d+'T00:00:00Z');return x.getUTCDate()+'-'+MN[x.getUTCMonth()]+'-'+String(x.getUTCFullYear()).slice(2)};
+const inr=n=>'₹'+Math.round(n).toLocaleString('en-IN'),sum=a=>a.reduce((s,e)=>s+e.amt,0);
+const val=(r,j)=>j in r.ed?r.ed[j]:r.f[j],odOf=r=>{const v=val(r,10);return v!==''&&isFinite(v)?+v:od(val(r,8))};
+function pd(v){if(v===''||v==null)return '';if(typeof v==='number')return v>20000?new Date(Math.round((v-25569)*864e5)).toISOString().slice(0,10):'';v=String(v).trim();let m=v.match(/^(\d{1,2})[-\/ ]([A-Za-z]{3})[a-z]*[-\/ ,]*(\d{2,4})$/);if(m){let y=+m[3];if(y<100)y+=2000;const mo=MON[m[2].toLowerCase()];if(mo!==undefined&&y>=2000&&y<=2100)return iso(y,mo,+m[1])}else{m=v.match(/^(\d{4})-(\d{2})-(\d{2})/);if(m)return m[0]}return v}
+function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('on'),3500)}
+const modal=h=>{$('#dc').innerHTML=h;$('#dlg').showModal()};
+const ask=m=>new Promise(res=>{modal(`<p style="white-space:pre-line">${esc(m)}</p><div class="row"><button class="btn pri" id="y">Yes</button><button class="btn" id="n">Cancel</button></div>`);$('#y').onclick=()=>{$('#dlg').close();res(true)};$('#n').onclick=()=>{$('#dlg').close();res(false)};$('#dlg').oncancel=()=>res(false)});
+document.addEventListener('click',e=>$$('details.ms[open]').forEach(d=>{if(!d.contains(e.target))d.open=false}));
+const SITES=[['Haryana',/har[a]?yana|gurgaon|gurugram/i],['West Bengal',/west ?bengal|kolkata/i],['Bengaluru',/\bblr\b|bangalore|bengaluru/i],['Pune',/pune/i],['Mumbai',/mumbai/i]];
+const nsite=t=>{for(const[n,r]of SITES)if(r.test(t))return n;return ''};
+const canonS=x=>String(x).trim().replace(/^UAPL\s*-\s*/i,'').toLowerCase().replace(/\b\w/g,c=>c.toUpperCase());
+const sortSite=(a,b)=>(+(a==='Unassigned'||a==='Multiple sites')-+(b==='Unassigned'||b==='Multiple sites'))||a.localeCompare(b);
+let MM=new Map();
+function enr1(r,i){const m=MM.get(nk(r.f[2])),n=nsite(val(r,3)),ms=m&&m.s.length?m.s:null;
+const sites=ms?(ms.length===1?ms:n&&ms.includes(n)?[n]:ms):(n?[n]:['Unassigned']);
+return{r,i,v:r.f[2],cat:r.cat||'',sites,site:sites.length>1?'Multiple sites':sites[0],types:m&&m.d.Type?m.d.Type.split(' / '):[],amt:+val(r,5)||0,od:odOf(r)}}
+function enr(){MM=new Map(S.master.map(m=>[nk(m.v),m]));return S.inv.map((r,i)=>enr1(r,i))}
+async function readWB(f){return XLSX.read(await f.arrayBuffer(),{type:'array'})}
+function parseOut(wb){const out=[];for(const sn of wb.SheetNames){const R=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,raw:true,defval:''});let h=-1;
+for(let i=0;i<Math.min(R.length,40);i++){const j=R[i].map(x=>String(x).toLowerCase()).join('|');if(j.includes('vendor name')&&j.includes('invoice no')){h=i;break}}if(h<0)continue;
+const H=R[h].map(x=>String(x).toLowerCase().replace(/\s+/g,' ')),ix=COLS.map(c=>H.findIndex(x=>x.includes(c[2])));let cat='';
+for(let i=h+1;i<R.length;i++){const r=R[i],f=COLS.map((c,j)=>{const v=ix[j]<0?'':r[ix[j]];if(c[1]==='d')return pd(v);if(c[1]==='n'){const x=parseFloat(String(v).replace(/,/g,''));return v===''||isNaN(x)?'':x}return String(v).trim()});
+if(f[2]&&!f[4]&&f[5]==='')cat=f[2];if(!f[2]||!f[4]||f[5]===''||/total/i.test(f[2]))continue;out.push({f,cat,ed:{}})}}
+const c={};out.forEach(r=>{const b=nk(r.f[2])+'|'+nk(r.f[4]);c[b]=(c[b]||0)+1;r.k=b+'#'+c[b]});return out}
+function parseMas(wb){const sn=wb.SheetNames.includes('Main Sheet')?'Main Sheet':wb.SheetNames[0],R=XLSX.utils.sheet_to_json(wb.Sheets[sn],{defval:''});if(!R.length)return[];
+const ks=Object.keys(R[0]),kv=ks.find(k=>/vendor name/i.test(k))||ks.find(k=>/vendor|party|supplier/i.test(k))||ks[0],kS=ks.find(k=>/owner site/i.test(k))||ks.find(k=>/site|location|receiving/i.test(k)&&!/with vendor/i.test(k)),mp=new Map();
+for(const r of R){const v=String(r[kv]).trim();if(!v)continue;let e=mp.get(nk(v));if(!e){e={v,s:[],d:{}};mp.set(nk(v),e)}
+if(kS){const c=canonS(r[kS]);if(c&&!e.s.includes(c))e.s.push(c)}
+ks.forEach(k=>{if(k===kv||k===kS||/^sl\b|site with vendor/i.test(k))return;const x=String(r[k]).trim();if(!x)return;const a=e.d[k]?e.d[k].split(' / '):[];if(!a.includes(x))a.push(x);e.d[k]=a.join(' / ')})}return[...mp.values()]}
+async function upOut(e){const f=e.target.files[0];e.target.value='';if(!f)return;
+try{const rows=parseOut(await readWB(f));if(!rows.length){toast('No invoice rows found. Sheet needs Vendor Name and Invoice No. columns.');return}
+const old=new Map(S.inv.map(r=>[r.k,r])),nw=new Map(rows.map(r=>[r.k,r])),add=[];
+old.forEach((o,k)=>{const n=nw.get(k);if(!n)add.push({r:o,at:TODAY,kind:'Full',paid:+val(o,5)||0});else{const d=(+val(o,5)||0)-(+n.f[5]||0);if(d>1)add.push({r:o,at:TODAY,kind:'Part',paid:d})}});
+rows.forEach(n=>{const o=old.get(n.k);if(o)n.ed=o.ed||{}});
+let ok=false;if(old.size&&add.length){const w=add.length>old.size*0.4?'\n\nThis is a large share of the previous data. Check that you uploaded the right and complete file.':'';
+ok=await ask(add.length+' invoice(s) worth '+inr(add.reduce((s,x)=>s+x.paid,0))+' were in the earlier data but are missing or reduced in this sheet.\nMove them to Payment complete?'+w)}
+if(ok)S.paid=add.concat(S.paid);S.inv=rows;S.asof=f.name+'|'+TODAY;sv();LS.s('asof',S.asof);
+toast(rows.length+' invoices loaded'+(ok?' · '+add.length+' moved to Payment complete':''));render()}catch(err){toast('Could not read this file')}}
+async function upMas(e){const f=e.target.files[0];e.target.value='';if(!f)return;try{const m=parseMas(await readWB(f));if(!m.length){toast('No vendors found in this file');return}
+if(S.master.length&&!await ask('Replace the current master ('+S.master.length+' vendors) with '+m.length+' vendors from this file?'))return;
+S.master=m;LS.s('master',m);toast(m.length+' vendors loaded');render()}catch(err){toast('Could not read this file')}}
+async function dl(name,wb){try{const d=window.claude&&await claude.use('downloads');if(!d){toast('Download is not available in this view');return}await d.save({filename:name,data:XLSX.write(wb,{type:'array',bookType:'xlsx'})})}catch(e){if(!e||e.code!=='declined')toast('Download failed')}}
+const wbk=(sheets,name)=>{const wb=XLSX.utils.book_new();sheets.forEach(([n,a])=>XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(a),n));dl(name,wb)};
+const E='<div class="empty"><h2>Start with your Outstanding Sheet</h2><p>Upload the Outstanding Sheet (.xlsx) with the green button. Data stays saved in this browser until you delete it.</p></div>';
+const k=(t,v,s,c='')=>`<div class="kpi ${c}"><span>${t}</span><b>${v}</b><small>${s}</small></div>`;
+function go(t){T=t;$$('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));$$('main>section').forEach(s=>s.hidden=s.id!=='t-'+t);render()}
+function render(){const a=S.asof.split('|');$('#meta').textContent=S.asof?'Data: '+a[0]+' · uploaded '+fd(a[1]):'No data yet';({dash:rDash,plan:rPlan,paid:rPaid,mast:rMast})[T]()}
+function pick(s){Object.assign(F,{vendor:new Set,type:new Set,cat:new Set,st:'due',q:''});F.site=new Set(s==='Multiple sites'?[]:[s]);go('plan')}
+function rDash(){const R=enr(),el=$('#t-dash');CH.forEach(c=>c.destroy());CH=[];if(!R.length){el.innerHTML=E;return}
+const pay=R.filter(e=>e.od>=0),w7=R.filter(e=>e.od<0&&e.od>=-7),ss=[...new Set(R.map(e=>e.site))].sort(sortSite);
+el.innerHTML=`<div class="kpis">${k('Total outstanding',inr(sum(R)),R.length+' invoices · '+new Set(R.map(e=>e.v)).size+' vendors')}${k('Payable now',inr(sum(pay)),pay.length+' invoices · '+new Set(pay.map(e=>e.v)).size+' vendors','bad')}${k('Due in next 7 days',inr(sum(w7)),w7.length+' invoices','amb')}${k('Payment complete',inr(S.paid.reduce((s,x)=>s+x.paid,0)),S.paid.length+' entries','pri')}</div>
+<div class="grid"><div class="card"><h3>Material receiving site: outstanding</h3><div class="cv"><canvas id="c1"></canvas></div></div><div class="card"><h3>Ageing of outstanding</h3><div class="cv"><canvas id="c2"></canvas></div></div><div class="card wide"><h3>Top 10 vendors, payable now</h3><div class="cv"><canvas id="c3"></canvas></div></div></div>
+<div class="card" style="margin-top:14px"><h3>Site summary <span class="note">(tap a site to open its payment plan)</span></h3><div class="tw"><table><tr><th>Site</th><th class="num">Vendors</th><th class="num">Invoices</th><th class="num">Payable now</th><th class="num">Not yet due</th><th class="num">Total</th></tr>${ss.map(s=>{const x=R.filter(e=>e.site===s),p=x.filter(e=>e.od>=0);return`<tr class="k" data-s="${esc(s)}" onclick="pick(this.dataset.s)"><td>${esc(s)}</td><td class="num">${new Set(x.map(e=>e.v)).size}</td><td class="num">${x.length}</td><td class="num od">${inr(sum(p))}</td><td class="num">${inr(sum(x)-sum(p))}</td><td class="num">${inr(sum(x))}</td></tr>`}).join('')}</table></div></div>`;
+if(!window.Chart)return;const cs=getComputedStyle(document.documentElement),g=n=>cs.getPropertyValue(n).trim();Chart.defaults.color=g('--mut');Chart.defaults.borderColor=g('--line');
+const L=v=>'₹'+(v/1e5).toFixed(0)+'L',base={responsive:true,maintainAspectRatio:false};
+CH.push(new Chart($('#c1'),{type:'bar',data:{labels:ss,datasets:[{label:'Payable now',data:ss.map(s=>sum(R.filter(e=>e.site===s&&e.od>=0))),backgroundColor:g('--c3')},{label:'Not yet due',data:ss.map(s=>sum(R.filter(e=>e.site===s&&e.od<0))),backgroundColor:g('--c1')}]},options:{...base,scales:{x:{stacked:true},y:{stacked:true,ticks:{callback:L}}},plugins:{tooltip:{callbacks:{label:c=>c.dataset.label+': '+inr(c.parsed.y)}}}}}));
+const B=[['Not yet due',e=>e.od<0],['0–30 days',e=>e.od>=0&&e.od<=30],['31–60',e=>e.od>30&&e.od<=60],['61–90',e=>e.od>60&&e.od<=90],['Over 90',e=>e.od>90]];
+CH.push(new Chart($('#c2'),{type:'doughnut',data:{labels:B.map(b=>b[0]),datasets:[{data:B.map(b=>sum(R.filter(b[1]))),backgroundColor:[g('--c1'),g('--c2'),g('--c4'),g('--c5'),g('--c3')],borderWidth:0}]},options:{...base,plugins:{tooltip:{callbacks:{label:c=>c.label+': '+inr(c.parsed)}}}}}));
+const vm={};pay.forEach(e=>vm[e.v]=(vm[e.v]||0)+e.amt);const tv=Object.entries(vm).sort((a,b)=>b[1]-a[1]).slice(0,10);
+CH.push(new Chart($('#c3'),{type:'bar',data:{labels:tv.map(x=>x[0].slice(0,24)),datasets:[{data:tv.map(x=>x[1]),backgroundColor:g('--c3')}]},options:{...base,indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>inr(c.parsed.x)}}},scales:{x:{ticks:{callback:L}}}}}))}
+function msBox(key,label){return`<div class="ms"><span>${label}</span><details id="d-${key}"><summary>${label}<b id="n-${key}"></b></summary><div class="pop"><input type="search" placeholder="Search" oninput="msq(this)"><div class="mb"><button class="btn sm" onclick="msAll('${key}',1)">Select shown</button><button class="btn sm" onclick="msAll('${key}',0)">Clear</button></div><div class="lst" id="l-${key}"></div></div></details></div>`}
+function msFill(key,list){$('#l-'+key).innerHTML=list.map(x=>`<label><input type="checkbox" value="${esc(x)}" ${F[key].has(x)?'checked':''} onchange="msTog('${key}',this)"> ${esc(x)}</label>`).join('');msCnt(key)}
+const msCnt=key=>$('#n-'+key).textContent=F[key].size?' ('+F[key].size+' selected)':' (all)';
+function msTog(key,el){el.checked?F[key].add(el.value):F[key].delete(el.value);msCnt(key);dep(key)}
+function msq(i){const q=i.value.toLowerCase();i.parentNode.querySelectorAll('.lst label').forEach(l=>l.style.display=l.textContent.toLowerCase().includes(q)?'':'none')}
+function msAll(key,on){$$('#l-'+key+' label').forEach(l=>{if(l.style.display==='none')return;const c=l.firstElementChild;c.checked=!!on;on?F[key].add(c.value):F[key].delete(c.value)});msCnt(key);dep(key)}
+function dep(key){if(key!=='vendor')vFill();pRes()}
+function pass(e,full){if(F.site.size){if(!e.sites.some(s=>F.site.has(s)))return false;if(!F.multi&&e.sites.length>1)return false}
+if(F.type.size&&!e.types.some(t=>F.type.has(t)))return false;if(F.cat.size&&!F.cat.has(e.cat))return false;if(!full)return true;
+if(F.vendor.size&&!F.vendor.has(e.v))return false;if(!{due:e=>e.od>=0,d7:e=>e.od<0&&e.od>=-7,d15:e=>e.od<0&&e.od>=-15,nd:e=>e.od<0,all:()=>true}[F.st](e))return false;
+const q=F.q.toLowerCase();return!q||(e.v+' '+val(e.r,3)+' '+val(e.r,4)+' '+val(e.r,15)+' '+e.sites.join(' ')).toLowerCase().includes(q)}
+function vFill(){const vs=[...new Set(enr().filter(e=>pass(e)).map(e=>e.v))].sort((a,b)=>a.localeCompare(b));[...F.vendor].forEach(v=>{if(!vs.includes(v))F.vendor.delete(v)});msFill('vendor',vs)}
+function rPlan(){const el=$('#t-plan');if(!S.inv.length){el.innerHTML=E;return}
+const ST=[['due','Credit complete (due or overdue)'],['d7','Due in next 7 days'],['d15','Due in next 15 days'],['nd','Not yet due'],['all','All outstanding']];
+el.innerHTML=`<div class="card"><div class="bar">${msBox('site','Site')}${msBox('type','Vendor type')}${msBox('cat','Category')}${msBox('vendor','Vendor')}<label>Status<select onchange="F.st=this.value;pRes()">${ST.map(s=>`<option value="${s[0]}"${s[0]===F.st?' selected':''}>${s[1]}</option>`).join('')}</select></label><label>Search<input type="search" value="${esc(F.q)}" placeholder="vendor, invoice, narration" oninput="F.q=this.value;pRes()"></label></div>
+<div class="row"><label class="chk"><input type="checkbox" ${F.multi?'checked':''} onchange="F.multi=this.checked;pRes()"> Include vendors registered at several sites</label><button class="btn pri" onclick="expPlan()">Download Excel</button><button class="btn" onclick="delAll()">Delete all outstanding data</button></div><div id="pr"></div></div>`;
+const R=enr();msFill('site',[...new Set(R.flatMap(e=>e.sites))].sort(sortSite));msFill('type',['Purchase','Service']);msFill('cat',[...new Set(R.map(e=>e.cat).filter(Boolean))]);vFill();pRes()}
+const fmt=(c,v,j)=>v===''||v==null?'':c==='d'?fd(v):c==='n'?(j===5?Number(v).toLocaleString('en-IN'):v):esc(v);
+const tds=e=>COLS.map((c,j)=>`<td class="${c[1]==='n'?'num':''}${j===10&&e.od>=0?' od':''}">${fmt(c[1],val(e.r,j),j)}</td>`).join('');
+function flt(){const L=enr().filter(e=>pass(e,true)).sort((a,b)=>a.v.localeCompare(b.v)||val(a.r,8).localeCompare(val(b.r,8))),vm=new Map();
+L.forEach(e=>{let o=vm.get(e.v);if(!o){o={v:e.v,s:new Set,n:0,amt:0};vm.set(e.v,o)}e.sites.forEach(s=>o.s.add(s));o.n++;o.amt+=e.amt});return{L,V:[...vm.values()].sort((a,b)=>b.amt-a.amt)}}
+function pRes(){const{L,V}=flt(),el=$('#pr');if(!L.length){el.innerHTML='<p class="note">No invoices match these filters.</p>';return}
+el.innerHTML=`<div class="kpis">${k('Total',inr(sum(L)),L.length+' invoices','bad')}${k('Vendors',V.length,F.site.size?[...F.site].join(', '):'All sites')}</div>
+<h3>Vendor-wise <span class="note">(tap a vendor to select only that vendor)</span></h3><div class="tw"><table><tr><th>Vendor</th><th>Site</th><th class="num">Invoices</th><th class="num">Amount</th></tr>${V.map(x=>`<tr class="k" data-v="${esc(x.v)}" onclick="F.vendor=new Set([this.dataset.v]);msFill('vendor',[...F.vendor]);pRes()"><td>${esc(x.v)}</td><td>${esc([...x.s].join(', '))}</td><td class="num">${x.n}</td><td class="num">${inr(x.amt)}</td></tr>`).join('')}<tr class="tot"><td colspan="2">Total</td><td class="num">${L.length}</td><td class="num">${inr(sum(L))}</td></tr></table></div>
+<h3 style="margin-top:16px">Outstanding details</h3><div class="tw" style="max-height:70vh"><table><tr>${COLS.map(c=>`<th>${hd(c)}</th>`).join('')}<th></th></tr>${L.map(e=>`<tr>${tds(e)}<td class="act"><button class="btn sm" onclick="edR(${e.i})">Edit</button> <button class="btn sm" onclick="payR(${e.i})">Paid</button> <button class="btn sm" onclick="delR(${e.i})">Delete</button></td></tr>`).join('')}<tr class="tot"><td></td><td></td><td>Total</td><td></td><td></td><td class="num">${Math.round(sum(L)).toLocaleString('en-IN')}</td><td colspan="11"></td></tr></table></div>`}
+const xv=(c,v)=>c[1]==='d'?fd(v):v;
+function expPlan(){const{L,V}=flt();if(!L.length){toast('Nothing to download');return}
+wbk([['Payment Plan',[COLS.map(c=>c[0]),...L.map(e=>COLS.map((c,j)=>xv(c,val(e.r,j)))),COLS.map((c,j)=>j===2?'Total':j===5?Math.round(sum(L)*100)/100:'')]],['Vendor Summary',[['Vendor','Site','Invoices','Amount'],...V.map(x=>[x.v,[...x.s].join(', '),x.n,Math.round(x.amt)])]]],`Payment_Plan_${F.site.size?[...F.site].join('_').replace(/\W+/g,'_'):'All'}_${TODAY}.xlsx`)}
+function edR(i){const r=S.inv[i];modal(`<h3>Edit invoice</h3><div class="fg">${COLS.map((c,j)=>`<label>${hd(c)}<input id="ef${j}" type="${c[1]==='d'?'date':c[1]==='n'?'number':'text'}" step="any" value="${esc(val(r,j))}"></label>`).join('')}</div><div class="row"><button class="btn pri" onclick="svR(${i})">Save</button><button class="btn" onclick="$('#dlg').close()">Cancel</button></div>`)}
+function svR(i){const r=S.inv[i];COLS.forEach((c,j)=>{let v=$('#ef'+j).value;if(c[1]==='n')v=v===''?'':+v;if(c[1]==='d'&&v===''&&r.f[j]&&!/^\d{4}-/.test(r.f[j]))return;if(v===r.f[j])delete r.ed[j];else r.ed[j]=v});sv();$('#dlg').close();toast('Saved');vFill();pRes()}
+async function delR(i){if(await ask('Delete this invoice from the data?\n'+S.inv[i].f[2]+' · '+S.inv[i].f[4])){S.inv.splice(i,1);sv();vFill();pRes()}}
+async function payR(i){const r=S.inv[i];if(await ask('Mark as paid and move to Payment complete?\n'+r.f[2]+' · '+r.f[4])){S.paid.unshift({r,at:TODAY,kind:'Manual',paid:+val(r,5)||0});S.inv.splice(i,1);sv();vFill();pRes()}}
+async function delAll(){if(await ask('Delete ALL outstanding data from this browser? Payment complete records are kept.')){S.inv=[];S.asof='';LS.s('asof','');sv();render()}}
+function rPaid(){const el=$('#t-paid');if(!S.paid.length){el.innerHTML='<div class="empty"><h2>No payments recorded yet</h2><p>When you upload a newer Outstanding Sheet, invoices that were in the earlier data but are missing now move here with all their details. You can also tap Paid on any invoice in Payment plan.</p></div>';return}
+el.innerHTML=`<div class="kpis">${k('Payment complete',inr(S.paid.reduce((s,x)=>s+x.paid,0)),S.paid.length+' entries','pri')}${k('Vendors',new Set(S.paid.map(x=>x.r.f[2])).size,'')}</div><div class="card"><div class="row"><input type="search" placeholder="Search vendor, invoice, site" value="${esc(LQ)}" oninput="LQ=this.value;pTab()"><button class="btn pri" onclick="expPaid()">Download Excel</button></div><div id="pt"></div></div>`;pTab()}
+const KL={Full:'Paid',Part:'Part paid',Manual:'Marked paid'};
+function pList(){MM=new Map(S.master.map(m=>[nk(m.v),m]));const q=LQ.toLowerCase();return S.paid.map((p,i)=>({p,i,e:enr1(p.r,i)})).filter(x=>!q||(x.e.v+' '+x.p.r.f[4]+' '+x.e.sites.join(' ')).toLowerCase().includes(q))}
+function pTab(){const L=pList(),gs={};L.forEach(x=>(gs[x.p.at]=gs[x.p.at]||[]).push(x));let h='',last='';
+L.forEach(x=>{if(x.p.at!==last){last=x.p.at;const a=gs[last];h+=`<tr class="grp"><td colspan="${COLS.length+4}">Paid on ${fd(last)} · ${a.length} entries · ${inr(a.reduce((s,y)=>s+y.p.paid,0))}</td></tr>`}
+h+=`<tr><td>${fd(x.p.at)}</td><td><span class="pill">${KL[x.p.kind]}</span></td><td class="num">${Math.round(x.p.paid).toLocaleString('en-IN')}</td>${tds(x.e)}<td class="act"><button class="btn sm" onclick="undoP(${x.i})">Undo</button> <button class="btn sm" onclick="delP(${x.i})">Delete</button></td></tr>`});
+$('#pt').innerHTML=L.length?`<div class="tw" style="max-height:70vh"><table><tr><th>Paid on</th><th>Status</th><th class="num">Paid amount</th>${COLS.map(c=>`<th>${hd(c)}</th>`).join('')}<th></th></tr>${h}</table></div>`:'<p class="note">No matches.</p>'}
+async function undoP(i){const p=S.paid[i];if(!await ask(p.kind==='Part'?'Remove this part-payment record? The remaining invoice stays in Payment plan.':'Move this invoice back to Payment plan?'))return;if(p.kind!=='Part')S.inv.push(p.r);S.paid.splice(i,1);sv();rPaid()}
+async function delP(i){if(await ask('Permanently delete this payment record?')){S.paid.splice(i,1);sv();rPaid()}}
+function expPaid(){const L=pList();wbk([['Payment Complete',[['Paid On','Status','Paid Amount','Site',...COLS.map(c=>c[0])],...L.map(x=>[fd(x.p.at),KL[x.p.kind],x.p.paid,x.e.site,...COLS.map((c,j)=>xv(c,val(x.p.r,j)))])]]],`Payment_Complete_${TODAY}.xlsx`)}
+function rMast(){const have=new Set(S.master.map(m=>nk(m.v))),miss=[...new Set(S.inv.map(r=>r.f[2]))].filter(v=>!have.has(nk(v))).sort(),el=$('#t-mast'),bs={};S.master.forEach(m=>m.s.forEach(s=>bs[s]=(bs[s]||0)+1));
+el.innerHTML=`<div class="card"><h3>Vendor master</h3><p class="note">Upload your vendor sheet (Main Sheet with Vendor Name, Owner Site Short Name, Vendor ID, GSTIN, Type). A vendor registered at several sites is listed under each site. Uploading replaces the current master.</p>
+<div class="row"><label class="btn pri">Upload vendor master<input type="file" accept=".xlsx,.xls,.csv" hidden onchange="upMas(event)"></label><span class="note">${S.master.length} vendors${S.master.length?' · '+Object.entries(bs).map(([s,n])=>s+' '+n).join(' · '):''}</span></div></div>
+${miss.length?`<div class="card"><h3>${miss.length} vendors in the Outstanding Sheet are not in the master</h3><p class="note">Tap a name to fill the form below and assign a site.</p><div class="row">${miss.map(v=>`<button class="btn sm" onclick="$('#mv').value=this.textContent;$('#ms').focus()">${esc(v)}</button>`).join('')}</div></div>`:''}
+<div class="card"><h3>Add or update a vendor</h3><div class="bar"><label>Vendor<input id="mv" type="text"></label><label>Site<input id="ms" type="text" placeholder="e.g. Pune"></label><label>Type<input id="mt" type="text" placeholder="Purchase / Service"></label><button class="btn pri" onclick="addM()">Save vendor</button></div></div>
+<div class="card"><div class="row"><input type="search" placeholder="Search vendors" value="${esc(MQ)}" oninput="MQ=this.value;mTab()"></div><div id="mtb"></div></div>`;mTab()}
+function mTab(){const q=nk(MQ),L=S.master.map((m,i)=>({...m,i})).filter(m=>!q||nk(m.v+' '+m.s.join(' ')+' '+Object.values(m.d).join(' ')).includes(q)).slice(0,300);
+$('#mtb').innerHTML=L.length?`<div class="tw" style="max-height:60vh"><table><tr><th>Vendor</th><th>Sites</th><th>Details</th><th></th></tr>${L.map(m=>`<tr><td>${esc(m.v)}</td><td>${esc(m.s.join(', '))||'<span class="note">not set</span>'}</td><td>${esc(Object.entries(m.d).map(([a,b])=>a+': '+b).join(' · '))}</td><td><button class="btn sm" onclick="delM(${m.i})">Remove</button></td></tr>`).join('')}</table></div>${S.master.length>300?'<p class="note">Showing first 300 matches. Use search to narrow down.</p>':''}`:'<p class="note">No vendors yet. Upload your vendor master Excel.</p>'}
+function addM(){const v=$('#mv').value.trim(),s=$('#ms').value.trim(),t=$('#mt').value.trim();if(!v){toast('Enter a vendor name');return}let e=S.master.find(m=>nk(m.v)===nk(v));if(!e){e={v,s:[],d:{}};S.master.push(e)}
+s.split(/[,;\/&]/).map(canonS).filter(Boolean).forEach(x=>{if(!e.s.includes(x))e.s.push(x)});if(t)e.d.Type=t;LS.s('master',S.master);toast('Saved');rMast()}
+async function delM(i){if(await ask('Remove '+S.master[i].v+' from master?')){S.master.splice(i,1);LS.s('master',S.master);rMast()}}
+render();
+</script></body></html>
