@@ -1354,7 +1354,181 @@ function ugForgotPass(){
   svSec();
   addLog('Password Reset','Via Passkey on Login Screen');
   alert('Password updated! Now login with username: '+SEC.users[0].u);
-}  
+}
+/* === FIREBASE CLOUD SYNC + SMART MASTER MERGE === */
+const FIREBASE_DB_URL = "https://vendor-payment-planner-default-rtdb.asia-southeast1.firebasedatabase.app";
+const CLOUD_NODE = "/vpp2_ugaoo_cloud.json";
+
+let IS_PULLING = false, SYNC_TIMER = null;
+
+function setCloudUI(state, tip = '') {
+  let b = $('#cloudStatus');
+  if (!b) {
+    const hdr = $('header .row');
+    if (hdr) {
+      b = document.createElement('button');
+      b.id = 'cloudStatus';
+      b.className = 'btn sm';
+      b.onclick = () => cloudPull(true);
+      hdr.prepend(b);
+    }
+  }
+  if (!b) return;
+  const map = {
+    idle:   ['☁️ Cloud Ready', 'Click to refresh from cloud'],
+    sync:   ['⏳ Syncing...', 'Saving/Loading cloud data'],
+    ok:     ['☁️ Synced', tip || 'All devices up to date (click to refresh)'],
+    err:    ['⚠️ Offline', tip || 'Using local backup. Click to retry sync.'],
+    noconf: ['⚙️ Setup Cloud', 'Add FIREBASE_DB_URL in index.html']
+  };
+  const [txt, title] = map[state] || map.idle;
+  b.textContent = txt;
+  b.title = title;
+}
+
+function normalizeState(d) {
+  if (!d) return;
+  if (d.S) {
+    S.inv = Array.isArray(d.S.inv) ? d.S.inv.map(r => ({
+      f: Array.isArray(r.f) ? r.f : [],
+      cat: r.cat || '',
+      k: r.k || '',
+      ed: r.ed || {}
+    })) : [];
+    S.paid = Array.isArray(d.S.paid) ? d.S.paid.map(p => ({
+      at: p.at || TODAY,
+      kind: p.kind || 'Full',
+      paid: +p.paid || 0,
+      r: {
+        f: Array.isArray(p.r?.f) ? p.r.f : [],
+        cat: p.r?.cat || '',
+        k: p.r?.k || '',
+        ed: p.r?.ed || {}
+      }
+    })) : [];
+    S.master = Array.isArray(d.S.master) ? d.S.master.map(m => ({
+      v: m.v || '',
+      s: Array.isArray(m.s) ? m.s : [],
+      d: m.d || {}
+    })) : [];
+    S.asof = d.S.asof || '';
+  }
+  if (d.SEC) {
+    SEC = Object.assign({}, UG_DEF, d.SEC);
+    SEC.perms = Object.assign({}, UG_DEF.perms, d.SEC.perms || {});
+    if (!Array.isArray(SEC.users) || !SEC.users.length) SEC.users = UG_DEF.users;
+    if (!Array.isArray(SEC.logs)) SEC.logs = [];
+  }
+}
+
+async function cloudPull(manual = false) {
+  if (!FIREBASE_DB_URL || FIREBASE_DB_URL.includes('PASTE_YOUR')) {
+    setCloudUI('noconf');
+    return;
+  }
+  setCloudUI('sync');
+  try {
+    const res = await fetch(FIREBASE_DB_URL.replace(/\/+$/, '') + CLOUD_NODE + '?t=' + Date.now());
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    if (data && (data.S || data.SEC)) {
+      IS_PULLING = true;
+      normalizeState(data);
+      _origLSs('inv', S.inv);
+      _origLSs('paid', S.paid);
+      _origLSs('master', S.master);
+      _origLSs('asof', S.asof);
+      _origLSs('sec', SEC);
+      IS_PULLING = false;
+      applyBranding();
+      render();
+      setCloudUI('ok', 'Last synced: ' + new Date().toLocaleTimeString('en-IN'));
+      if (manual) toast('Cloud data synced!');
+    } else {
+      // First time setup: push existing local data to empty cloud
+      await cloudPush(true);
+    }
+  } catch (e) {
+    IS_PULLING = false;
+    setCloudUI('err', e.message);
+    if (manual) toast('Cloud sync failed — check internet or Firebase URL');
+  }
+}
+
+async function cloudPush(immediate = false) {
+  if (IS_PULLING || !FIREBASE_DB_URL || FIREBASE_DB_URL.includes('PASTE_YOUR')) return;
+  clearTimeout(SYNC_TIMER);
+  const run = async () => {
+    setCloudUI('sync');
+    try {
+      const payload = { S, SEC, updatedAt: new Date().toISOString() };
+      const res = await fetch(FIREBASE_DB_URL.replace(/\/+$/, '') + CLOUD_NODE, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      setCloudUI('ok', 'Saved to cloud: ' + new Date().toLocaleTimeString('en-IN'));
+    } catch (e) {
+      setCloudUI('err', e.message);
+    }
+  };
+  if (immediate) await run();
+  else SYNC_TIMER = setTimeout(run, 600);
+}
+
+// Auto-hook into localStorage saves so every change syncs to cloud
+const _origLSs = LS.s.bind(LS);
+LS.s = function (k, v) {
+  const ok = _origLSs(k, v);
+  if (ok && !IS_PULLING && ['inv', 'paid', 'master', 'asof', 'sec'].includes(k)) {
+    cloudPush();
+  }
+  return ok;
+};
+
+// Upgrade upMas() to SMART MASTER MERGE (never wipes manually added vendors)
+upMas = async function (e) {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  try {
+    const incoming = parseMas(await readWB(f));
+    if (!incoming.length) { toast('No vendors found in this file'); return; }
+    const existingMap = new Map(S.master.map(m => [nk(m.v), m]));
+    let added = 0, updated = 0;
+    incoming.forEach(m => {
+      const ex = existingMap.get(nk(m.v));
+      if (!ex) added++;
+      else updated++;
+    });
+    if (S.master.length && !await ask(
+      `Smart Merge Vendor Master:\n• ${added} new vendor(s) will be added\n• ${updated} existing vendor(s) will be updated\n• Your manually added vendors will remain safe.\n\nProceed?`
+    )) return;
+
+    incoming.forEach(m => {
+      const key = nk(m.v);
+      const ex = existingMap.get(key);
+      if (!ex) {
+        S.master.push(m);
+        existingMap.set(key, m);
+      } else {
+        m.s.forEach(s => { if (!ex.s.includes(s)) ex.s.push(s); });
+        Object.entries(m.d).forEach(([dk, dv]) => { if (dv) ex.d[dk] = dv; });
+      }
+    });
+    LS.s('master', S.master);
+    addLog('Vendor Master Merged', `+${added} new, ${updated} updated`);
+    toast(`Master merged: +${added} new · ${updated} updated`);
+    render();
+  } catch (err) {
+    toast('Could not read this file');
+  }
+};
+
+// Auto-sync on page load & when switching back to the browser tab
+cloudPull();
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && CUR_USER) cloudPull();
+});
 </script>
 </body>
 </html>
