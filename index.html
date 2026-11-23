@@ -305,9 +305,107 @@ dialog::backdrop{background:rgba(15,23,42,.55);backdrop-filter:blur(3px)}
   main{padding:14px 14px 40px}
   .bar{grid-template-columns:1fr}
 }
+
+/* === UGAOO THEME, SECURITY GATE & ADMIN PANEL === */
+:root{
+  --pri:#14532d;--pri-hover:#0f3d21;--pri2:#dcfce7;--pri-ink:#14532d;
+  --ug-gold:#b45309;--ug-leaf:#166534;
+}
+:root[data-theme="dark"]{
+  --pri:#22c55e;--pri-hover:#16a34a;--pri2:#052e16;--pri-ink:#86efac;
+}
+.brand-logo{
+  background:linear-gradient(135deg,#14532d,#15803d);
+  overflow:hidden;border:2px solid rgba(255,255,255,.25);
+}
+.brand-logo img{width:100%;height:100%;object-fit:cover}
+.ug-hero{
+  position:relative;border-radius:16px;overflow:hidden;margin-bottom:16px;
+  background:linear-gradient(120deg,#0b3b24 0%,#14532d 55%,#1e6b43 100%);
+  color:#fff;padding:20px 24px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px;
+  box-shadow:0 8px 24px rgba(20,83,45,.22);border:1px solid rgba(255,255,255,.12);
+}
+.ug-hero::before{
+  content:"";position:absolute;inset:0;opacity:.22;background-size:cover;background-position:center;
+  background-image:var(--ug-banner,radial-gradient(circle at 85% 20%,rgba(134,239,172,.55),transparent 45%),radial-gradient(circle at 15% 90%,rgba(250,204,21,.25),transparent 40%));
+  pointer-events:none;
+}
+.ug-hero>*{position:relative;z-index:1}
+.ug-hero-left{display:flex;align-items:center;gap:14px}
+.ug-hero-logo{
+  width:52px;height:52px;border-radius:14px;background:rgba(255,255,255,.14);
+  backdrop-filter:blur(6px);display:grid;place-items:center;border:1px solid rgba(255,255,255,.25);overflow:hidden;flex-shrink:0;
+}
+.ug-hero-logo img{width:100%;height:100%;object-fit:cover}
+.ug-hero h2{margin:0;font-size:19px;color:#fff;letter-spacing:-.01em}
+.ug-hero p{margin:2px 0 0;font-size:13px;color:rgba(255,255,255,.84)}
+.ug-role-pill{
+  display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:99px;
+  font-size:12px;font-weight:700;background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.25);
+}
+
+/* Login Security Gate */
+#authGate{
+  position:fixed;inset:0;z-index:999;display:grid;place-items:center;padding:18px;
+  background:linear-gradient(135deg,#072617 0%,#14532d 50%,#0f172a 100%);
+  background-size:cover;background-position:center;
+}
+#authGate[hidden]{display:none}
+.auth-card{
+  width:min(410px,95vw);background:var(--card);color:var(--ink);
+  border-radius:20px;padding:28px 26px;box-shadow:0 25px 60px rgba(0,0,0,.45);
+  border:1px solid var(--line);animation:popIn .2s ease;
+}
+.auth-brand{text-align:center;margin-bottom:20px}
+.auth-logo{
+  width:64px;height:64px;border-radius:18px;margin:0 auto 12px;
+  background:linear-gradient(135deg,#14532d,#16a34a);color:#fff;
+  display:grid;place-items:center;box-shadow:0 8px 20px rgba(20,83,45,.32);overflow:hidden;
+}
+.auth-logo img{width:100%;height:100%;object-fit:cover}
+.auth-brand h2{margin:0;font-size:20px}
+.auth-brand p{margin:4px 0 0;color:var(--mut);font-size:13px}
+.auth-err{color:var(--bad);font-size:12.5px;font-weight:600;margin:8px 0 0;min-height:18px}
+
+/* Role-based restrictions for Viewer */
+body.role-viewer .adm-only{display:none!important}
+.adm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+.adm-switch{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:10px 12px;border:1px solid var(--line);border-radius:10px;margin-bottom:8px;background:var(--card-alt);
+}
+.adm-switch span{font-size:13px;font-weight:600}
+.adm-switch small{display:block;color:var(--mut);font-weight:400;font-size:12px}
+.adm-switch input{accent-color:var(--pri);width:18px;height:18px;cursor:pointer}
+
 </style>
 </head>
 <body>
+
+<!-- === UGAOO SECURITY LOGIN GATE === -->
+<div id="authGate">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <div class="auth-logo" id="authLogoBox">
+        <svg class="ic" style="width:32px;height:32px" viewBox="0 0 24 24"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg>
+      </div>
+      <h2>Ugaoo Payment Planner</h2>
+      <p>Authorized Access Only · UAPL Accounts</p>
+    </div>
+    <form onsubmit="ugLogin(event)">
+      <div class="fld" style="margin-bottom:12px">
+        <span>Username</span>
+        <input id="lgUser" type="text" placeholder="Enter username (admin / staff)" required autocomplete="username">
+      </div>
+      <div class="fld" style="margin-bottom:14px">
+        <span>Password / PIN</span>
+        <input id="lgPass" type="password" placeholder="Enter password" required autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn pri" style="width:100%;padding:10px">Unlock Dashboard</button>
+      <div class="auth-err" id="lgErr"></div>
+    </form>
+  </div>
+</div>
 
 <div class="topbar">
   <header>
@@ -912,6 +1010,249 @@ function addM(){
 async function delM(i){if(await ask('Remove '+S.master[i].v+' from Vendor Master?')){S.master.splice(i,1);LS.s('master',S.master);updateBadges();rMast();toast('Vendor removed')}}
 
 render();
+
+/* === UGAOO ADMIN PANEL, SECURITY & BRANDING MODULE === */
+const UG_LEAF_SVG='<svg class="ic ic-lg" viewBox="0 0 24 24"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg>';
+const UG_DEF={
+  users:[
+    {u:'admin',p:'ugaoo@123',role:'admin',name:'Admin (Owner)'},
+    {u:'staff',p:'view123',role:'viewer',name:'Accounts Staff'}
+  ],
+  perms:{staffUpload:false,staffEdit:false,staffDelete:false,staffBackup:false},
+  timeoutMin:30,
+  logo:'',
+  banner:'',
+  title:'Ugaoo Agritech (UAPL)',
+  sub:'Site-wise Vendor Payment & Outstanding Control Center',
+  logs:[]
+};
+
+let SEC=Object.assign({},UG_DEF,LS.g('sec',{}));
+SEC.perms=Object.assign({},UG_DEF.perms,SEC.perms||{});
+if(!Array.isArray(SEC.users)||!SEC.users.length)SEC.users=UG_DEF.users;
+if(!Array.isArray(SEC.logs))SEC.logs=[];
+const svSec=()=>LS.s('sec',SEC);
+
+let CUR_USER=JSON.parse(sessionStorage.getItem('vpp2_session')||'null');
+let IDLE_T=null;
+
+function addLog(action,detail=''){
+  const who=CUR_USER?CUR_USER.u:'system';
+  SEC.logs.unshift({at:new Date().toLocaleString('en-IN'),who,action,detail});
+  if(SEC.logs.length>150)SEC.logs.length=150;
+  svSec();
+}
+
+function applyBranding(){
+  const logoHtml=SEC.logo?`<img src="${SEC.logo}" alt="Ugaoo">`:UG_LEAF_SVG;
+  const bl=$('.brand-logo');if(bl)bl.innerHTML=logoHtml;
+  const al=$('#authLogoBox');if(al)al.innerHTML=logoHtml;
+  const hl=$('#ugHeroLogo');if(hl)hl.innerHTML=logoHtml;
+  const ht=$('#ugHeroTitle');if(ht)ht.textContent=SEC.title||'Ugaoo Agritech (UAPL)';
+  const hs=$('#ugHeroSub');if(hs)hs.textContent=SEC.sub||'Site-wise Vendor Payment Control Center';
+  if(SEC.banner){
+    document.documentElement.style.setProperty('--ug-banner',`url("${SEC.banner}")`);
+    $('#authGate').style.backgroundImage=`linear-gradient(135deg,rgba(7,38,23,.82),rgba(15,23,42,.88)),url("${SEC.banner}")`;
+  }else{
+    document.documentElement.style.removeProperty('--ug-banner');
+    $('#authGate').style.backgroundImage='';
+  }
+}
+
+function injectAdminUI(){
+  // 1. Add Admin Panel tab in nav
+  if(!$('nav button[data-t="admin"]')){
+    const nb=document.createElement('button');
+    nb.dataset.t='admin';nb.className='adm-only';nb.onclick=()=>go('admin');
+    nb.innerHTML='<svg class="ic" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Admin Panel';
+    $('nav').appendChild(nb);
+  }
+  // 2. Add Admin section in main
+  if(!$('#t-admin')){
+    const sec=document.createElement('section');sec.id='t-admin';sec.hidden=true;
+    $('main').appendChild(sec);
+  }
+  // 3. Add Ugaoo Botanical Hero Banner at top of main
+  if(!$('#ugHero')){
+    const h=document.createElement('div');h.id='ugHero';h.className='ug-hero';
+    h.innerHTML=`
+      <div class="ug-hero-left">
+        <div class="ug-hero-logo" id="ugHeroLogo">${UG_LEAF_SVG}</div>
+        <div><h2 id="ugHeroTitle"></h2><p id="ugHeroSub"></p></div>
+      </div>
+      <div class="row" style="margin:0">
+        <span class="ug-role-pill" id="ugRoleBadge"></span>
+        <button class="btn sm" style="background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.3)" onclick="ugLogout()">
+          <svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Lock / Logout
+        </button>
+      </div>`;
+    $('main').prepend(h);
+  }
+  // Mark sensitive header buttons for RBAC
+  const hdrBtns=$$('header .row > *');
+  hdrBtns.forEach(el=>{
+    const txt=el.textContent||'';
+    if(/Backup|Restore/i.test(txt))el.dataset.perm='staffBackup';
+    if(/Upload Outstanding/i.test(txt))el.dataset.perm='staffUpload';
+  });
+}
+
+function applyRBAC(){
+  const isAdm=CUR_USER&&CUR_USER.role==='admin';
+  document.body.classList.toggle('role-viewer',!isAdm);
+  const rb=$('#ugRoleBadge');
+  if(rb&&CUR_USER)rb.textContent=(isAdm?'🛡️ Admin: ':'👤 Staff: ')+CUR_USER.name;
+  $$('[data-perm]').forEach(el=>{
+    const p=el.dataset.perm;
+    el.style.display=(isAdm||SEC.perms[p])?'':'none';
+  });
+  if(!isAdm){
+    if(!SEC.perms.staffDelete)$$('button[onclick^="delAll"],button[onclick^="delR"],button[onclick^="delP"],button[onclick^="delM"]').forEach(b=>b.style.display='none');
+    if(!SEC.perms.staffEdit)$$('button[onclick^="edR"],button[onclick^="payR"],button[onclick^="undoP"]').forEach(b=>b.style.display='none');
+  }
+}
+
+function resetIdle(){
+  clearTimeout(IDLE_T);
+  if(CUR_USER&&SEC.timeoutMin>0){
+    IDLE_T=setTimeout(()=>{ugLogout('Session locked due to inactivity');},SEC.timeoutMin*60*1000);
+  }
+}
+['click','keydown','mousemove'].forEach(ev=>document.addEventListener(ev,resetIdle,{passive:true}));
+
+function ugLogin(e){
+  e.preventDefault();
+  const u=$('#lgUser').value.trim().toLowerCase(),p=$('#lgPass').value;
+  const found=SEC.users.find(x=>x.u.toLowerCase()===u&&x.p===p);
+  if(!found){$('#lgErr').textContent='Invalid username or password';return}
+  CUR_USER={u:found.u,role:found.role,name:found.name};
+  sessionStorage.setItem('vpp2_session',JSON.stringify(CUR_USER));
+  $('#authGate').hidden=true;
+  $('#lgPass').value='';$('#lgErr').textContent='';
+  addLog('Login',`${found.name} (${found.role})`);
+  resetIdle();
+  applyRBAC();
+  toast('Welcome, '+found.name);
+}
+
+function ugLogout(msg){
+  if(CUR_USER)addLog('Logout',CUR_USER.u);
+  CUR_USER=null;
+  sessionStorage.removeItem('vpp2_session');
+  if(T==='admin')go('dash');
+  $('#authGate').hidden=false;
+  $('#lgErr').textContent=msg||'';
+  setTimeout(()=>$('#lgUser').focus(),50);
+}
+
+// Hook into existing render() so Admin tab & RBAC work seamlessly
+const _origRender=render;
+render=function(){
+  if(T==='admin'){
+    if(!CUR_USER||CUR_USER.role!=='admin'){go('dash');return}
+    const a=S.asof.split('|');
+    $('#meta').innerHTML=S.asof?`<span class="dot"></span> ${esc(a[0])} · Updated ${fd(a[1])}`:`<span class="dot off"></span> Permanent local storage active`;
+    updateBadges();
+    rAdmin();
+  }else{
+    _origRender();
+  }
+  applyRBAC();
+};
+
+function rAdmin(){
+  const el=$('#t-admin');
+  el.innerHTML=`
+  <div class="kpis">
+    ${k('Active Users',SEC.users.length,'Admin & Staff accounts','pri',IC.user)}
+    ${k('Auto-Lock Timer',SEC.timeoutMin+' Min','Inactivity security lock','amb',IC.clock)}
+    ${k('Audit Logs',SEC.logs.length,'Recent security events','',IC.alert)}
+    ${k('Storage Used',Math.round(JSON.stringify(localStorage).length/1024)+' KB','Permanent browser DB','pri',IC.done)}
+  </div>
+  <div class="adm-grid">
+    <div class="card">
+      <h3>🌿 Ugaoo Branding & Photo Theme</h3>
+      <div class="fld" style="margin-bottom:10px"><span>Dashboard Heading</span><input id="ugT" value="${esc(SEC.title)}"></div>
+      <div class="fld" style="margin-bottom:12px"><span>Subtitle</span><input id="ugS" value="${esc(SEC.sub)}"></div>
+      <div class="row">
+        <label class="btn sm pri">Upload Ugaoo Logo<input type="file" accept="image/*" hidden onchange="ugImg(event,'logo')"></label>
+        <label class="btn sm">Upload Banner Photo<input type="file" accept="image/*" hidden onchange="ugImg(event,'banner')"></label>
+        <button class="btn sm ghost" onclick="SEC.logo='';SEC.banner='';svSec();applyBranding();toast('Reset to default leaf theme')">Reset</button>
+      </div>
+      <button class="btn sm pri" onclick="SEC.title=$('#ugT').value.trim()||'Ugaoo Agritech';SEC.sub=$('#ugS').value.trim();svSec();applyBranding();addLog('Branding Updated');toast('Branding saved')">Save Branding</button>
+    </div>
+
+    <div class="card">
+      <h3>🛡️ Security & Staff Permissions</h3>
+      <div class="adm-switch"><div><span>Allow Staff to Upload Sheets</span><small>Outstanding & Vendor Master upload</small></div><input type="checkbox" ${SEC.perms.staffUpload?'checked':''} onchange="SEC.perms.staffUpload=this.checked;svSec();addLog('Permission Changed','staffUpload='+this.checked)"></div>
+      <div class="adm-switch"><div><span>Allow Staff to Edit / Mark Paid</span><small>Invoice edits & manual payment status</small></div><input type="checkbox" ${SEC.perms.staffEdit?'checked':''} onchange="SEC.perms.staffEdit=this.checked;svSec();addLog('Permission Changed','staffEdit='+this.checked)"></div>
+      <div class="adm-switch"><div><span>Allow Staff to Delete Records</span><small>Delete invoices or clear data</small></div><input type="checkbox" ${SEC.perms.staffDelete?'checked':''} onchange="SEC.perms.staffDelete=this.checked;svSec();addLog('Permission Changed','staffDelete='+this.checked)"></div>
+      <div class="adm-switch"><div><span>Allow Staff Backup / Restore</span><small>Export or import JSON backups</small></div><input type="checkbox" ${SEC.perms.staffBackup?'checked':''} onchange="SEC.perms.staffBackup=this.checked;svSec();addLog('Permission Changed','staffBackup='+this.checked)"></div>
+      <div class="row" style="margin-top:10px;margin-bottom:0">
+        <label class="fld" style="flex:1"><span>Auto-Lock Timeout (Minutes, 0 = Off)</span><input type="number" min="0" max="240" value="${SEC.timeoutMin}" onchange="SEC.timeoutMin=+this.value||0;svSec();resetIdle();toast('Timeout updated')"></label>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <h3>👥 Manage Users & Passwords</h3>
+    <div class="bar" style="margin-bottom:12px">
+      <div class="fld"><span>Username</span><input id="nu" placeholder="e.g. accounts1"></div>
+      <div class="fld"><span>Display Name</span><input id="nn" placeholder="e.g. Rahul"></div>
+      <div class="fld"><span>Password / PIN</span><input id="np" type="password" placeholder="Set password"></div>
+      <div class="fld"><span>Role</span><select id="nr"><option value="viewer">Staff (Viewer)</option><option value="admin">Admin (Full Access)</option></select></div>
+      <button class="btn pri" onclick="ugAddUser()" style="height:39px">${IC.plus} Save User</button>
+    </div>
+    <div class="tw">
+      <table>
+        <thead><tr><th>Username</th><th>Name</th><th>Role</th><th>Action</th></tr></thead>
+        <tbody>${SEC.users.map((u,i)=>`<tr><td><b>${esc(u.u)}</b></td><td>${esc(u.name)}</td><td><span class="pill ${u.role==='admin'?'ok':'site'}">${u.role.toUpperCase()}</span></td><td>${u.u==='admin'?'<span class="note">Primary Admin</span>':`<button class="btn xs bad" onclick="ugDelUser(${i})">${IC.trash} Remove</button>`}</td></tr>`).join('')}</tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row-between"><h3>📜 Security Activity Log</h3><button class="btn xs ghost" onclick="SEC.logs=[];svSec();rAdmin()">Clear Logs</button></div>
+    <div class="tw" style="max-height:42vh">
+      <table>
+        <thead><tr><th>Time</th><th>User</th><th>Action</th><th>Details</th></tr></thead>
+        <tbody>${SEC.logs.length?SEC.logs.map(l=>`<tr><td style="white-space:nowrap;color:var(--mut)">${esc(l.at)}</td><td><b>${esc(l.who)}</b></td><td><span class="pill">${esc(l.action)}</span></td><td>${esc(l.detail)}</td></tr>`).join(''):'<tr><td colspan="4" style="text-align:center;color:var(--mut)">No activity logged yet</td></tr>'}</tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+function ugImg(e,key){
+  const f=e.target.files[0];e.target.value='';if(!f)return;
+  if(f.size>1.5*1024*1024){toast('Image too large (keep under 1.5 MB)');return}
+  const r=new FileReader();
+  r.onload=()=>{SEC[key]=r.result;svSec();applyBranding();addLog('Updated '+key);toast('Ugaoo '+key+' updated!')};
+  r.readAsDataURL(f);
+}
+
+function ugAddUser(){
+  const u=$('#nu').value.trim().toLowerCase(),n=$('#nn').value.trim()||u,p=$('#np').value,role=$('#nr').value;
+  if(!u||!p){toast('Enter username & password');return}
+  const ex=SEC.users.find(x=>x.u.toLowerCase()===u);
+  if(ex){ex.p=p;ex.name=n;if(ex.u!=='admin')ex.role=role;addLog('Updated User',u);}
+  else{SEC.users.push({u,p,role,name:n});addLog('Added User',u+' ('+role+')');}
+  svSec();toast('User saved');rAdmin();
+}
+
+async function ugDelUser(i){
+  if(await ask('Remove user '+SEC.users[i].u+'?')){
+    addLog('Deleted User',SEC.users[i].u);
+    SEC.users.splice(i,1);svSec();rAdmin();
+  }
+}
+
+// Initialize Security & Ugaoo Theme on Load
+injectAdminUI();
+applyBranding();
+if(CUR_USER){$('#authGate').hidden=true;resetIdle();applyRBAC();}
+else{$('#authGate').hidden=false;}
+
 </script>
 </body>
 </html>
